@@ -2,45 +2,55 @@ from ConfigParser import ConfigParser
 
 DEFAULT_CONFIG_FILE_PATH = "/etc/nn.cfg"
 
-dbHost = None
-dbUser = None
-dbPass = None
-dbName = None
+nnConfig = None
 
-logFile = None
-connectionLogFile = None
-commandLogFile = None
+configMap = [
+    ['listenAddr', 'Listen', 'address', '127.0.0.1'],
+    ['listenPort', 'Listen', 'port', 8888],
 
+    ['dbHost', 'Database', 'host',     None],
+    ['dbUser', 'Database', 'user',     None],
+    ['dbPass', 'Database', 'password', None],
+    ['dbName', 'Database', 'db',       None],
 
-def init():
-    loadConfig()
+    ['logFilePath',        'Log', 'log_file_path',            '/var/log/nn/nn.log'],
+    ['connLogFilePath',    'Log', 'connection_log_file_path', '/var/log/nn/connection.log'],
+    ['commandLogFilePath', 'Log', 'command_log_file_path',    '/var/log/nn/command.log']
+]
 
-def loadConfig():
-    cfg = ConfigParser()
-    fp = open(CONFIG_FILE_PATH, 'r')
-    cfg.readfp(fp)
+class Config():
+    def __init__(self, path = DEFAULT_CONFIG_FILE_PATH):
+        self.cfg = ConfigParser()
+        fp = open(path, 'r')
+        self.cfg.readfp(fp)
+        self.loadConfig()
 
-    global dbHost
-    global dbUser
-    global dbPass
-    global dbName
+    def loadConfig(self):
+        for item in configMap:
+            setattr(self, item[0], self.getConfig(item[1], item[2], item[3]))
+        
 
-    dbHost = cfg.get('Database', 'host')
-    dbUser = cfg.get('Database', 'user')
-    dbPass = cfg.get('Database', 'password')
-    dbName = cfg.get('Database', 'db')
+    def getConfig(self, section, option, default = None):
+        value = None
+        try:
+            value = self.cfg.get(section, option)
+        except:
+            value = None
+        
+        if value == None:
+            value = default
+
+        return value
  
-    global logFile
-    global connectionLogFile
-    global commandLogFile
+def init(configFilePath = DEFAULT_CONFIG_FILE_PATH):
+    global nnConfig
+    nnConfig = Config(configFilePath)
 
 
 if __name__ == "__main__" :
-    init()
-
-    print dbHost
-    print dbUser
-    print dbPass
-    print dbName
+    config = Config()
+    print config.logFilePath
+    print config.commandLogFilePath
+    print config.dbName
 
         

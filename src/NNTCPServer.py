@@ -1,8 +1,11 @@
 import socket
 import select
 import errno
+import NNLogger
+import NNError
+import traceback
 
-class TCPConnectionHandle():
+class TCPConnectionHandle(object):
     def __init__(self, socket, addr, port):
         self.socket = socket
         self.peerAddr = addr
@@ -10,16 +13,16 @@ class TCPConnectionHandle():
         self.handleAccept()
 
     def handleAccept(self):
-        print ("New connection from %s coming.." % self.peerAddr)
+        NNLogger.logConnection("[ACCEPT] %s:%d" % (self.peerAddr, self.peerPort))
 
     def handleRead(self, data):
-        print ("Recv data: %s" % data)
+        pass
 
     def handleWrite(self):
         pass
 
     def handleClose(self, errCode):
-        pass
+        NNLogger.logConnection("[CLOSE] %s:%d %d" % (self.peerAddr, self.peerPort, errCode))
 
 
 
@@ -46,13 +49,18 @@ class TCPServer():
                 if fd == self.serverSocket:
                     sock, (addr, port) = self.serverSocket.accept()
                     sock.setblocking(0)
-                    rlist.append(sock)
 
-                    self.connMap[sock] = self.connClass(sock, addr, port)
+                    try:
+                        self.connMap[sock] = (self.connClass(sock, addr, port), sock, addr, port)
+                        rlist.append(sock)
+                    except Exception as e:
+                        NNLogger.logConnection("[ERROR] Create instance of connection class [%s] error:%s" % (connClass, e))
+                        sock.close()
                 else:
-                    if self.readDataFromFD(fd) <= 0:
+                    ret = self.readDataFromFD(fd)
+                    if ret <= 0:
                         fd.close()
-                        self.connMap[fd].handleClose()
+                        self.connMap[fd][0].handleClose(ret)
                         rlist.remove(fd)
                         del self.connMap[fd]
 
@@ -67,18 +75,24 @@ class TCPServer():
                     return 0
 
                 if fd in self.connMap:
-                    self.connMap[fd].handleRead(data)
+                    try:
+                        self.connMap[fd][0].handleRead(data)
+                    except Exception as e:
+                        NNLogger.logConnection("[ERROR] Handle read data from client (%s:%d) error:%s | %s" % (self.connMap[fd][2], self.connMap[fd][3], e, traceback.format_exc()))
+                        return NNError.TCP_DATA_HANDLE_ERROR
+
                     length += len(data)
                 else:
                     # Internal error
-                    return -1
+                    NNLogger.logConnection("[ERROR] Read FD not in cache")
+                    return NNError.TCP_DATA_HANDLE_ERROR
             except socket.error as e:
                 if e.errno == errno.EWOULDBLOCK:
                     # Read done
                     return length
                 else:
                     # Other read error
-                    return e.errno
+                    return NNError.TCP_SOCK_READ_ERROR
 
 if __name__ == '__main__':
     server = TCPServer('127.0.0.1', 8888, TCPConnectionHandle)

@@ -1,9 +1,5 @@
+import NNConfig 
 import logging
-
-# Config
-LOG_FILE_PATH = '/var/log/bobo/bobo.log'
-CONN_FILE_PATH = '/var/log/bobo/connection.log'
-COMMAND_FILE_PATH = '/var/log/bobo/command.log'
 
 nnLogger = None
 connLogger = None
@@ -30,9 +26,9 @@ def init():
     global logConnection
     global logCommand
 
-    nnLogger = createLogger('NN', LOG_FILE_PATH, '%(levelname)-7s %(asctime)-10s  [%(filename)s:%(lineno)d]  %(message)s')
-    connLogger = createLogger('Connection', CONN_FILE_PATH, '%(asctime)-10s %(message)s')
-    commandLogger = createLogger('Command', COMMAND_FILE_PATH, '%(asctime)-10s %(message)s')
+    nnLogger = createLogger('NN', NNConfig.nnConfig.logFilePath, '%(levelname)-7s %(asctime)-10s  [%(filename)s:%(lineno)d]  %(message)s')
+    connLogger = createLogger('Connection', NNConfig.nnConfig.connLogFilePath, '%(asctime)-10s %(message)s')
+    commandLogger = createLogger('Command', NNConfig.nnConfig.commandLogFilePath, '%(asctime)-10s %(message)s')
 
     debug = nnLogger.debug
     info = nnLogger.info
@@ -57,15 +53,18 @@ def createLogger(name, filePath, formatStr):
         
         logger.setLevel(logging.DEBUG)
     else:
-        logger.setLevel(logging.WARNING)
+        logger.setLevel(logging.INFO)
     
     return logger
 
 if __name__ == '__main__':
-    initLogger()
+    init()
 
     debug("sdfdf")
     debug("test")
     warning("test")
     info("test")
     error("test")
+
+    logConnection("Connection")
+    logCommand("Command")

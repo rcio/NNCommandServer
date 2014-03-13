@@ -1,38 +1,41 @@
+import NNConfig
+import NNLogger
 import NNTCPServer
 import NNProtocol
-import BBLogger
 
-class NNCommandServer(TCPServer):
-    def handle_stream(self, stream, address):
-        BBLogger.info("New connection accept from %s", address)
-        connection = NNConnection(stream)
-        connection.readData()
 
 class NNConnection(NNTCPServer.TCPConnectionHandle):
-    def __init__(self, stream):
-        self.buffer = ''
-        self.requestPDU = None
-    
+    def handleAccept(self):
+        super(NNConnection, self).handleAccept()
+        self.request = None
+
+
     def handleRead(self, data):
         leftData = data
 
-        while len(leftData):
-            if not self.requestPDU:
-                self.requestPDU = NNProtocol.NNRequestPDU()
+        while leftData and len(leftData):
+            if not self.request:
+                self.request = NNProtocol.NNRequestPDU()
                 
-            leftData = self.requestPDU.handleData(leftData)
-            if self.requestPDU.allReceived:
+            leftData = self.request.handleData(leftData)
+            if self.request.allReceived:
                 self.handleRequestPDU()
-                self.requestPDU = None
+                self.request = None
             else:
                 break
-        
+
 
     def handleRequestPDU(self):
-        print self.handleRequestPDU
+        NNLogger.logCommand("Header: [%s] ---- Body: [%s]" % (self.request.header, self.request.bodyData))
+
+
 
 if __name__ == '__main__':
-    BBLogger.initLogger()
+    NNConfig.init()
+    NNLogger.init()
 
-    server = NNTCPServer.TCPServer('127.0.0.1', 8888)
+    addr = NNConfig.nnConfig.listenAddr
+    port = NNConfig.nnConfig.listenPort
+
+    server = NNTCPServer.TCPServer(addr, port, NNConnection)
     server.loop()
