@@ -1,4 +1,5 @@
 import struct
+import json
 
 maxBodyLen = 2 * 1024 * 1024
 
@@ -68,6 +69,7 @@ class NNRequestPDU():
     def handleBody(self):
         if len(self.buffer) >= self.header.bodyLen:
             self.bodyData = self.buffer[:self.header.bodyLen]
+            self.body = json.loads(self.bodyData)
             self.allReceived = True;
             return self.buffer[self.header.bodyLen:]
         else:

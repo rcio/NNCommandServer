@@ -2,7 +2,7 @@ import NNConfig
 import NNLogger
 import NNTCPServer
 import NNProtocol
-
+import NNRequest
 
 class NNConnection(NNTCPServer.TCPConnectionHandle):
     def handleAccept(self):
@@ -27,12 +27,20 @@ class NNConnection(NNTCPServer.TCPConnectionHandle):
 
     def handleRequestPDU(self):
         NNLogger.logCommand("Header: [%s] ---- Body: [%s]" % (self.request.header, self.request.bodyData))
-
-
+        
+        rspBody = NNRequest.DispatchCenter().dispatch(
+            self.request.header.uin,
+            self.request.header.cmd,
+            self.request.body
+        )
+        
+        print rspBody
 
 if __name__ == '__main__':
     NNConfig.init()
     NNLogger.init()
+
+    NNRequest.DispatchCenter()
 
     addr = NNConfig.nnConfig.listenAddr
     port = NNConfig.nnConfig.listenPort
