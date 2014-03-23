@@ -5,9 +5,9 @@ class RequestHandler(object):
     def __init__(self, uin, body):
         self.uin = uin
         self.reqBody = body
-        self.rspBody = None
-        self.error = NNError.NN_ERR_NO_ERROR
-        self.errMsg = ''
+        self.rspBody = ''
+        self.retCode = NNError.NN_ERR_NO_ERROR
+        self.retMsg = ''
 
     def checkParams(self):
         pass

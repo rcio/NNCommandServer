@@ -46,5 +46,5 @@ class DispatchCenter(object):
         handler.checkParams()
         handler.proccess()
         handler.dump()
-        return handler.rspBody
+        return (handler.retCode, handler.rspBody)
     

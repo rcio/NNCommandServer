@@ -10,6 +10,10 @@ class TCPConnectionHandle(object):
         self.socket = socket
         self.peerAddr = addr
         self.peerPort = port
+        self.sendBuffer = ''
+        
+        self.writable = False
+        
         self.handleAccept()
 
     def handleAccept(self):
@@ -24,7 +28,8 @@ class TCPConnectionHandle(object):
     def handleClose(self, errCode):
         NNLogger.logConnection("[CLOSE] %s:%d %d" % (self.peerAddr, self.peerPort, errCode))
 
-
+    def sendData(self, data):
+        self.sendBuffer += data
 
 class TCPServer():
     def __init__(self, address, port, connClass):
@@ -38,7 +43,7 @@ class TCPServer():
         self.serverSocket.bind((address, port))
         self.serverSocket.listen(1024)
         self.serverSocket.setblocking(0)
-
+        
     def loop(self):
         rlist = [self.serverSocket]
         wlist = [self.serverSocket]
@@ -53,16 +58,46 @@ class TCPServer():
                     try:
                         self.connMap[sock] = (self.connClass(sock, addr, port), sock, addr, port)
                         rlist.append(sock)
+                        wlist.append(sock)
                     except Exception as e:
                         NNLogger.logConnection("[ERROR] Create instance of connection class [%s] error:%s" % (connClass, e))
                         sock.close()
                 else:
+                    connection = self.connMap[fd][0]
                     ret = self.readDataFromFD(fd)
                     if ret <= 0:
+                        connection.handleClose(ret)
                         fd.close()
-                        self.connMap[fd][0].handleClose(ret)
                         rlist.remove(fd)
+                        wlist.remove(fd)
+                        writeFD.remove(fd)
                         del self.connMap[fd]
+                    else:
+                        if len(connection.sendBuffer) > 0:
+                            writeLen = self.writeDataToFD(fd, connection.sendBuffer)
+                            if writeLen < 0:
+                                connection.handleClose(ret)
+                                fd.close()
+                                rlist.remove(fd)
+                                wlist.remove(fd)
+                                writeFD.remove(fd)
+                                del self.connMap[fd]
+                            else:
+                                self.sendBuffer = self.sendBuffer[writeLen:]
+                                wlist.append(fd)
+
+            for fd in writeFD:
+                connection = self.connMap[fd][0]
+                connection.handleWrite()
+                if len(connection.sendBuffer) == 0:
+                    wlist.remove(connection.socket)
+        
+    def writeDataToFD(self, fd, data):
+        try:
+            writeLen = fd.send(data)
+        except socket.error as e:
+            return e.error
+            
 
     def readDataFromFD(self, fd):
         length = 0

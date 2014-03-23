@@ -51,7 +51,8 @@ class NNRequestPDU():
             self.buffer += data
 
         if not self.header:
-            self.handleHeader()
+            if self.handleHeader() == False:
+                return
 
         leftData = self.handleBody()
         return leftData
@@ -62,8 +63,9 @@ class NNRequestPDU():
             self.header = NNReqHeader()
             self.header.handleData(self.buffer[:NNReqHeader.size])
             self.buffer = self.buffer[NNReqHeader.size:]
+            return True
         else:
-            return;
+            return False;
 
 
     def handleBody(self):
@@ -74,34 +76,48 @@ class NNRequestPDU():
             return self.buffer[self.header.bodyLen:]
         else:
             return
-        
-class BPRespHeader():
-    def __init__(self, aTuple):
-        self.magic = aTuple[0]
-        self.seq = aTuple[1]
-        self.cmd = aTuple[2]
-        self.ret = aTuple[3]
-        self.bodyLen = aTuple[4]
-        self.flag = aTuple[5]
-        self.reserv1 = aTuple[6]
-        self.reserv2 = aTuple[7]
+
+# Magic
+# Seq
+# Ret
+# BodyLen
+# Flag
+# R1
+# R2  
+class NNRespHeader():
+    def __init__(self, seq, ret, bodyLen):
+        self.magic = magic
+        self.seq = seq
+        self.ret = ret
+        self.bodyLen = bodyLen
+        self.reserv1 = 0
+        self.reserv2 = 0
+
+        self.struct = struct.Struct('7I')
 
     def __str__(self):
         return '\nmagic : {self.magic}\nseq : {self.seq}\ncmd : {self.cmd}\nret : {self.ret}\nbodyLength : {self.bodyLen}\n'.format(self=self)
+        
+    def data(self, compress = False):
+        self.flag = bool(compress) & compressFlag
+        return self.struct.pack(self.magic,
+                                self.seq,
+                                self.ret,
+                                self.bodyLen,
+                                self.flag,
+                                self.reserv1,
+                                self.reserv2)
 
+class NNResponsePDU():
+    def __init__(self, seq, ret, body):
+        self.bodyData = ''
+        if len(body):
+            self.bodyData = json.dumps(body)
 
-class BPBody():
-    def __init__(self, data):
-        self.data = data
+        self.header = NNRespHeader(seq, ret, len(self.bodyData))
 
-
-class BPRequest():
-    def __init__(self, header, body):
-        self.header = header
         self.body = body
-
-
-class BPResponse():
-    def __init__(self, header, body):
-        self.header = header
-        self.body = body
+        
+    def data(self):
+        resData = self.header.data()
+        return resData + self.bodyData

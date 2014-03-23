@@ -28,13 +28,18 @@ class NNConnection(NNTCPServer.TCPConnectionHandle):
     def handleRequestPDU(self):
         NNLogger.logCommand("Header: [%s] ---- Body: [%s]" % (self.request.header, self.request.bodyData))
         
-        rspBody = NNRequest.DispatchCenter().dispatch(
+        (rspCode, rspBody) = NNRequest.DispatchCenter().dispatch(
             self.request.header.uin,
             self.request.header.cmd,
             self.request.body
         )
         
-        print rspBody
+        self.response = NNProtocol.NNResponsePDU(
+            self.request.header.seq,
+            rspCode,
+            rspBody)
+     
+        self.sendData(self.response.data())
 
 if __name__ == '__main__':
     NNConfig.init()
